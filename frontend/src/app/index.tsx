@@ -1,13 +1,14 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import Box from "@mui/material/Box";
 import InputUrl from "@/components/InputText"
 import PreviewGallery from "@/components/PreviewGallery"
 import HowTo from "@/components/HowTo"
 import ResponsiveSpacer from "@/components/ResponsiveSpacer";
 import { useVideo } from "@/context/VideoContext"
-import { extractCourseNumber } from "@/utils/helpers"
+import { callBackendForCourseLinks, callBackendForFlavoredCourseM3u8, extractCourseNumber } from "@/utils/helpers"
 import { Snackbar, Alert } from '@mui/material';
-import { callBackendForCourseM3u8 } from "@/utils/helpers"
+import { callBackendForGenericCourseM3u8 } from "@/utils/helpers"
+import type { MediaGalleryData } from "@/utils/helpers"
 
 function App() {
 
@@ -43,19 +44,57 @@ function App() {
     }
   };
 
+
   // effect to get kaltura html
-  const [m3u8Content, setM3u8Content] = useState<string>('');
+  const [videoLinks, setVideoLinks] = useState<string | MediaGalleryData>('');
   useEffect(() => {
     if (currCourseNumberLoaded && cookie != "") {
-      callBackendForCourseM3u8(currCourseNumberString, cookie)
+      callBackendForCourseLinks(currCourseNumberString, cookie)
         .then(data => {
-          setM3u8Content(data); // store the string in state
+          setVideoLinks(data);
         })
         .catch(error => {
-          console.error('Error fetching m3u8:', error);
+          console.error('Error fetching links:', error);
         });
     }
   }, [currCourseNumberLoaded, cookie]);
+
+  const hasRun = useRef(false);
+  useEffect(() => {
+    if (!hasRun.current && typeof videoLinks !== 'string' && videoLinks?.links?.length > 0) {
+      hasRun.current = true
+      const fetchFlavoredUrls = async () => {
+        try {
+          const updatedLinks = await Promise.all(
+            videoLinks.links.map(async (item) => {
+              const flavoredUrl = await callBackendForGenericCourseM3u8(
+                item.href,
+                videoLinks.partnerId,
+                videoLinks.ks,
+                cookie
+              );
+
+              const currSegLinkArray = await callBackendForFlavoredCourseM3u8(flavoredUrl, cookie)
+              return { ...item, flavoredUrl, currSegLinkArray };
+            })
+          );
+
+          setVideoLinks({
+            partnerId: videoLinks.partnerId,
+            ks: videoLinks.ks,
+            links: updatedLinks
+          });
+
+          console.log('Updated links with flavoredUrl:', updatedLinks);
+        } catch (error) {
+          console.error('Error updating flavoredUrl:', error);
+        }
+      };
+
+      fetchFlavoredUrls();
+    }
+  }, [videoLinks]);
+
 
   return (
     <Box className="App">
@@ -67,7 +106,7 @@ function App() {
       )}
       <ResponsiveSpacer smaller='40px' larger='80px' />
       <PreviewGallery />
-      <Box>{m3u8Content}</Box>
+      {/* <Box>{m3u8Array}</Box> */}
       <Snackbar
         open={open}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
@@ -83,46 +122,3 @@ function App() {
 }
 
 export default App
-
-// fetch("https://kaltura.oregonstate.edu/media/t/1_8all14a9/373511952", {
-//   "headers": {
-//     "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-//     "accept-language": "en-US,en;q=0.9",
-//     "sec-ch-ua": "\"Not;A=Brand\";v=\"99\", \"Google Chrome\";v=\"139\", \"Chromium\";v=\"139\"",
-//     "sec-ch-ua-mobile": "?0",
-//     "sec-ch-ua-platform": "\"Windows\"",
-//     "sec-fetch-dest": "iframe",
-//     "sec-fetch-mode": "navigate",
-//     "sec-fetch-site": "same-origin",
-//     "sec-fetch-storage-access": "active",
-//     "sec-fetch-user": "?1",
-//     "upgrade-insecure-requests": "1",
-//     "x-proctorio": "1.5.25178.21",
-//     "cookie": "kms-locale=d2l; _hjSessionUser_1260596=eyJpZCI6IjRlYTBlNWU4LWRmNGEtNTU2YS04YjQzLTE4ZTc3YjVjN2IyMyIsImNyZWF0ZWQiOjE3NTU3Mjg1Mzk3NjksImV4aXN0aW5nIjpmYWxzZX0=; kms_ctamuls=9df96mptqmrv54v5uhp6b8vh5u; testing=; __cf_bm=ZtImxpPDv6uIdtvqJNp3ghmEa00C4FZc8Z_3.KhAclY-1757670833-1.0.1.1-e38AlbyibQlEfLuKgAgz.qW0T.2u0Rdq_P6mPUZtxK68oApN6P3CzW1zhYHhN0YdYlDUwOuCiw1cBLRgP03YTbFRdDc3qtcw17_7wZ3R4E8",
-//     "Referer": "https://kaltura.oregonstate.edu/channel/2012570"
-//   },
-//   "body": null,
-//   "method": "GET"
-// });
-
-// fetch("https://kaltura.oregonstate.edu/channel/2012570", {
-//   "headers": {
-//     "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-//     "accept-language": "en-US,en;q=0.9",
-//     "sec-ch-ua": "\"Not;A=Brand\";v=\"99\", \"Google Chrome\";v=\"139\", \"Chromium\";v=\"139\"",
-//     "sec-ch-ua-mobile": "?0",
-//     "sec-ch-ua-platform": "\"Windows\"",
-//     "sec-fetch-dest": "iframe",
-//     "sec-fetch-mode": "navigate",
-//     "sec-fetch-site": "cross-site",
-//     "sec-fetch-storage-access": "active",
-//     "sec-fetch-user": "?1",
-//     "upgrade-insecure-requests": "1",
-//     "x-proctorio": "1.5.25178.21"
-//   },
-//   "referrer": "http://localhost:5173/",
-//   "body": null,
-//   "method": "GET",
-//   "mode": "cors",
-//   "credentials": "include"
-// });

@@ -5,6 +5,8 @@ import React, { createContext, useContext, useState } from "react";
 export interface VideoLink {
   label: string;
   href: string;
+  flavoredUrl: string;
+  segLinks: string[];
 }
 
 export interface VideoProp {
