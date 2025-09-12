@@ -62,10 +62,10 @@ function App() {
       <HowTo />
       <ResponsiveSpacer smaller='40px' larger='80px' />
       <InputUrl buttonLabel='Load Kaltura Page' inputLabel='Canvas Course Page URL:' submitInput={submitCourseNumber} />
-      <ResponsiveSpacer smaller='40px' larger='80px' />
       {currCourseNumberLoaded && (
         <InputUrl buttonLabel='Get MP4 Files' inputLabel='Kaltura Request Cookie:' submitInput={submitCookie} />
       )}
+      <ResponsiveSpacer smaller='40px' larger='80px' />
       <PreviewGallery />
       <Box>{m3u8Content}</Box>
       <Snackbar

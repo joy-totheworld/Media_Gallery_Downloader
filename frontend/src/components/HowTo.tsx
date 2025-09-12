@@ -4,8 +4,11 @@ import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Container from "@mui/material/Container";
 import Box from "@mui/material/Box";
+import { useVideo } from "@/context/VideoContext"
 
 export default function HowTo() {
+    const { currCourseNumberString } = useVideo();
+
     return (
         <Box
             id="how-section"
@@ -59,7 +62,7 @@ export default function HowTo() {
                                     variant="body2"
                                     sx={{ color: "text.secondary", textAlign: "center" }}
                                 >
-                                    Enter the URL of the course page below and click the button.
+                                    On this page, open your browser's developer tools and navigate to the Network tab. Enter the URL of the course page below and click the button.
                                 </Typography>
                             </CardContent>
                         </Container>
@@ -81,7 +84,7 @@ export default function HowTo() {
                                     variant="body2"
                                     sx={{ color: "text.secondary", textAlign: "center" }}
                                 >
-                                    Download the generated mp4 files.
+                                    As this page loads a preview of the course media gallery, a request with the name of the course number {currCourseNumberString}, will be sent to Kaltura. Copy the cookie from the Kaltura request headers, paste it in the input field, and click the button.
                                 </Typography>
                             </CardContent>
                         </Container>
