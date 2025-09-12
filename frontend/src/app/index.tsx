@@ -1,18 +1,83 @@
-import '@/app/App.css'
+import React, { useEffect, useState } from 'react'
 import Box from "@mui/material/Box";
-import InputUrl from "@/components/InputUrl"
+import InputUrl from "@/components/InputText"
 import PreviewGallery from "@/components/PreviewGallery"
 import HowTo from "@/components/HowTo"
 import ResponsiveSpacer from "@/components/ResponsiveSpacer";
+import { useVideo } from "@/context/VideoContext"
+import { extractCourseNumber } from "@/utils/helpers"
+import { Snackbar, Alert } from '@mui/material';
+import { callBackendForCourseM3u8 } from "@/utils/helpers"
 
 function App() {
+
+  // consts for error snackbar
+  const [open, setOpen] = React.useState(false);
+  const [errorText, setErrorText] = React.useState("");
+  const handleClose = () => {
+    setOpen(false);
+  };
+
+  // submitFunction for course number
+  const { updateFunction, currCourseNumberLoaded, currCourseNumberString } = useVideo();
+  const submitCourseNumber = (inputString: string) => {
+    var courseNumberString = extractCourseNumber(inputString)
+    if (courseNumberString != null) {
+      updateFunction(courseNumberString);
+      updateFunction(true);
+      console.log(courseNumberString)
+    } else {
+      setErrorText('Expected URL in the following format: https://canvas.oregonstate.edu/courses/{CourseNumber}.')
+      setOpen(true);
+    }
+  };
+
+  // submitFunction for cookie
+  const [cookie, setCookie] = React.useState<string>("");
+  const submitCookie = (inputCookie: string) => {
+    if (inputCookie != null) {
+      setCookie(inputCookie)
+    } else {
+      setErrorText('No cookie provided.')
+      setOpen(true);
+    }
+  };
+
+  // effect to get kaltura html
+  const [m3u8Content, setM3u8Content] = useState<string>('');
+  useEffect(() => {
+    if (currCourseNumberLoaded && cookie != "") {
+      callBackendForCourseM3u8(currCourseNumberString, cookie)
+        .then(data => {
+          setM3u8Content(data); // store the string in state
+        })
+        .catch(error => {
+          console.error('Error fetching m3u8:', error);
+        });
+    }
+  }, [currCourseNumberLoaded, cookie]);
+
   return (
     <Box className="App">
       <HowTo />
       <ResponsiveSpacer smaller='40px' larger='80px' />
-      <InputUrl />
+      <InputUrl buttonLabel='Load Kaltura Page' inputLabel='Canvas Course Page URL:' submitInput={submitCourseNumber} />
       <ResponsiveSpacer smaller='40px' larger='80px' />
+      {currCourseNumberLoaded && (
+        <InputUrl buttonLabel='Get MP4 Files' inputLabel='Kaltura Request Cookie:' submitInput={submitCookie} />
+      )}
       <PreviewGallery />
+      <Box>{m3u8Content}</Box>
+      <Snackbar
+        open={open}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        autoHideDuration={10000}
+        onClose={handleClose}
+      >
+        <Alert severity="error" onClose={handleClose}>
+          {errorText}
+        </Alert>
+      </Snackbar>
     </Box>
   )
 }

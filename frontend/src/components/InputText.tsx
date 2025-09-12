@@ -1,37 +1,21 @@
 import React from 'react'
-import '@/app/App.css'
 import TextField from "@mui/material/TextField";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import { useVideo } from "@/context/VideoContext"
-import { extractCourseNumber } from "@/utils/helpers"
-import { Snackbar, Alert } from '@mui/material';
 
-export default function InputUrl() {
+interface InputTextProp {
+    buttonLabel: string;
+    inputLabel: string;
+    submitInput: (inputString: string) => void
+};
+
+export default function InputText({ buttonLabel, inputLabel, submitInput }: InputTextProp) {
 
     // consts for text input
-    const { updateFunction } = useVideo();
-    const [currText, setCurrText] = React.useState("");
+    const [currText, setCurrText] = React.useState<string>("");
     const handleInput = (event: React.ChangeEvent<HTMLInputElement>) => {
         setCurrText(event.target.value)
     };
-    const submitInput = () => {
-        var courseNumberString = extractCourseNumber(currText)
-        if (courseNumberString != null) {
-            updateFunction(courseNumberString);
-            updateFunction(true);
-            console.log(courseNumberString)
-        } else {
-            setOpen(true);
-        }
-    };
-
-    // consts for error snackbar
-    const [open, setOpen] = React.useState(false);
-    const handleClose = () => {
-        setOpen(false);
-    };
-    const errorText = "Expected URL in the following format: https://canvas.oregonstate.edu/courses/{CourseNumber}."
 
     return (
         <Box
@@ -67,7 +51,7 @@ export default function InputUrl() {
                 className="formInput"
                 fullWidth
                 id={"url_input"}
-                label={"Canvas Course Page URL:"}
+                label={inputLabel}
                 margin="normal"
                 onChange={handleInput}
             />
@@ -79,20 +63,10 @@ export default function InputUrl() {
                     mb: "10px",
                 }}
                 variant="outlined"
-                onClick={submitInput}
+                onClick={() => submitInput(currText)}
             >
-                Get MP4 Files
+                {buttonLabel}
             </Button>
-            <Snackbar
-                open={open}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-                autoHideDuration={10000}
-                onClose={handleClose}
-            >
-                <Alert severity="error" onClose={handleClose}>
-                    {errorText}
-                </Alert>
-            </Snackbar>
         </Box>
     )
 }
