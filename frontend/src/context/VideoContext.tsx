@@ -4,9 +4,10 @@ import React, { createContext, useContext, useState } from "react";
 
 export interface VideoLink {
   label: string;
-  href: string;
+  entryId: string;
   flavoredUrl: string;
   segLinks: string[];
+  mp4Url: string;
 }
 
 export interface VideoProp {

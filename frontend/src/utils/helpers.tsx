@@ -12,9 +12,45 @@ export interface MediaGalleryData {
     ks: string;
 }
 
-export const callBackendForCourseLinks = async (courseNumberString: string, cookie: string): Promise<string | MediaGalleryData> => {
+export const callBackendForCourseLinks = async (
+    courseNumberString: string,
+    cookie: string
+): Promise<string | MediaGalleryData> => {
     try {
-        const response = await fetch(buildBaseUrl() + 'scrapeLinks?url=https://kaltura.oregonstate.edu/channel/' + courseNumberString + '&cookie=' + cookie)
+        const courseNumberLinks = await callBackendForNumCourseLinks(courseNumberString, cookie);
+
+        const url = buildBaseUrl() +
+            'scrapeLinks?url=https://kaltura.oregonstate.edu/channel/' +
+            courseNumberString +
+            '//sort/recent/sortBy/recent/pageSize/' +
+            courseNumberLinks +
+            '&cookie=' +
+            cookie;
+
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (!response.ok) {
+            if (response.status === 404) {
+                return data as string;
+            }
+            throw new Error(data.message || "Unexpected error occurred");
+        }
+
+        return {
+            links: data.links,
+            partnerId: data.partnerId,
+            ks: data.ks
+        } as MediaGalleryData;
+    } catch (error) {
+        throw error;
+    }
+};
+
+
+export const callBackendForNumCourseLinks = async (courseNumberString: string, cookie: string): Promise<string> => {
+    try {
+        const response = await fetch(buildBaseUrl() + 'scrapeNumber?url=https://kaltura.oregonstate.edu/channel/' + courseNumberString + '&cookie=' + cookie)
 
         const data = await response.json();
         if (!response.ok) {
@@ -23,20 +59,13 @@ export const callBackendForCourseLinks = async (courseNumberString: string, cook
             }
             throw new Error(data.message || "Unexpected error occurred");
         }
-        return { links: data.links, partnerId: data.partnerId, ks: data.ks } as MediaGalleryData;
+        return data.mediaCount as string;
     } catch (error) {
         throw error;
     }
 }
 
-function buildKalturaM3U8Url(url: string, partnerId: string, ks: string) {
-    console.log(url)
-    console.log(partnerId)
-    console.log(ks)
-    const entryId = url.split('/')[3];
-    console.log(entryId)
-
-    // return `https://cfvod.kaltura.com/hls/p/${partnerId}/sp/0/serveFlavor/entryId/${entryId}/v/1/ev/3/flavorId/1_c6ikfdzj/name/a.mp4/index.m3u8`;
+function buildKalturaM3U8Url(entryId: string, partnerId: string, ks: string) {
     return `https://www.kaltura.com/p/${partnerId}/sp/0/playManifest/entryId/${entryId}/format/applehttp/protocol/http/ks/${ks}/video.m3u8`;
 
 }
@@ -52,15 +81,14 @@ export const callBackendForFlavoredCourseM3u8 = async (url: string, cookie: stri
             }
             throw new Error(data.message || "Unexpected error occurred");
         }
-        console.log("data.link: " + data.link)
         return data.links as string[];
     } catch (error) {
         throw error;
     }
 }
 
-export const callBackendForGenericCourseM3u8 = async (url: string, partnerId: string, ks: string, cookie: string): Promise<string> => {
-    const m3u8Url = buildKalturaM3U8Url(url, partnerId, ks)
+export const callBackendForGenericCourseM3u8 = async (entryId: string, partnerId: string, ks: string, cookie: string): Promise<string> => {
+    const m3u8Url = buildKalturaM3U8Url(entryId, partnerId, ks)
     try {
         const response = await fetch(buildBaseUrl() + 'scrapeGenericM3u8?url=' + m3u8Url + '&cookie=' + cookie)
 
@@ -71,9 +99,61 @@ export const callBackendForGenericCourseM3u8 = async (url: string, partnerId: st
             }
             throw new Error(data.message || "Unexpected error occurred");
         }
-        console.log("data.link: " + data.link)
         return data.link as string;
     } catch (error) {
         throw error;
     }
 }
+
+export const callBackendForMp4 = async (segLinks: string[], label: string, entryId: string): Promise<string> => {
+    try {
+        const response = await fetch(buildBaseUrl() + 'segLinksToMp4', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ segLinks, label, entryId })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            if (response.status === 404) {
+                return errorData as string;
+            }
+            throw new Error(errorData.message || 'Unexpected error occurred');
+        }
+
+        const blob = await response.blob();
+        const videoUrl = URL.createObjectURL(blob);
+        return videoUrl;
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const callBackendForMp4SequentialBatch = async (batch: VideoLink[]) => {
+    const results: VideoLink[] = [];
+
+    for (const currVideoLink of batch) {
+        try {
+            const response = await callBackendForMp4(currVideoLink.segLinks, currVideoLink.label, currVideoLink.entryId)
+            results.push({
+                ...currVideoLink,
+                mp4Url: response
+            });
+        } catch (error) {
+            console.error('Error fetching:', currVideoLink.label, error);
+        }
+    }
+
+    return results;
+};
+
+export const downloadAllFromBackend = (videoLinks: string[]) => {
+    videoLinks.forEach((url, index) => {
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `video_${index + 1}.mp4`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+    });
+};

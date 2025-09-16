@@ -5,7 +5,7 @@ import PreviewGallery from "@/components/PreviewGallery"
 import HowTo from "@/components/HowTo"
 import ResponsiveSpacer from "@/components/ResponsiveSpacer";
 import { useVideo } from "@/context/VideoContext"
-import { callBackendForCourseLinks, callBackendForFlavoredCourseM3u8, extractCourseNumber } from "@/utils/helpers"
+import { callBackendForCourseLinks, callBackendForFlavoredCourseM3u8, callBackendForMp4, callBackendForMp4SequentialBatch, extractCourseNumber } from "@/utils/helpers"
 import { Snackbar, Alert } from '@mui/material';
 import { callBackendForGenericCourseM3u8 } from "@/utils/helpers"
 import type { MediaGalleryData } from "@/utils/helpers"
@@ -59,23 +59,30 @@ function App() {
     }
   }, [currCourseNumberLoaded, cookie]);
 
-  const hasRun = useRef(false);
+  const hasRun1 = useRef(false);
+  const hasRun2 = useRef(false);
+  const segsLinksPopulated = useRef(false);
   useEffect(() => {
-    if (!hasRun.current && typeof videoLinks !== 'string' && videoLinks?.links?.length > 0) {
-      hasRun.current = true
+    if (!hasRun1.current && typeof videoLinks !== 'string' && videoLinks?.links?.length > 0) {
+      hasRun1.current = true
       const fetchFlavoredUrls = async () => {
         try {
           const updatedLinks = await Promise.all(
             videoLinks.links.map(async (item) => {
               const flavoredUrl = await callBackendForGenericCourseM3u8(
-                item.href,
+                item.entryId,
                 videoLinks.partnerId,
                 videoLinks.ks,
                 cookie
               );
 
-              const currSegLinkArray = await callBackendForFlavoredCourseM3u8(flavoredUrl, cookie)
-              return { ...item, flavoredUrl, currSegLinkArray };
+              const segLinks = await callBackendForFlavoredCourseM3u8(flavoredUrl, cookie)
+              if (typeof segLinks != 'string') {
+                return { ...item, flavoredUrl, segLinks };
+              } else {
+                return { ...item, flavoredUrl };
+              }
+
             })
           );
 
@@ -86,6 +93,7 @@ function App() {
           });
 
           console.log('Updated links with flavoredUrl:', updatedLinks);
+          segsLinksPopulated.current = true;
         } catch (error) {
           console.error('Error updating flavoredUrl:', error);
         }
@@ -95,6 +103,28 @@ function App() {
     }
   }, [videoLinks]);
 
+  useEffect(() => {
+    if (segsLinksPopulated.current && !hasRun2.current && typeof videoLinks !== 'string' && videoLinks?.links?.length > 0) {
+      hasRun2.current = true
+      const fetchMp4Urls = async () => {
+        try {
+          const updatedVideoLinksMp4 = await callBackendForMp4SequentialBatch(videoLinks.links)
+          setVideoLinks({
+            partnerId: videoLinks.partnerId,
+            ks: videoLinks.ks,
+            links: updatedVideoLinksMp4
+          });
+
+          console.log('Updated links with mp4:', updatedVideoLinksMp4);
+        } catch (error) {
+          console.error('Error updating flavoredUrl:', error);
+        }
+      }
+
+      fetchMp4Urls();
+    }
+
+  }, [segsLinksPopulated.current]);
 
   return (
     <Box className="App">
