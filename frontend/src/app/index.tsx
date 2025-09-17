@@ -5,7 +5,7 @@ import PreviewGallery from "@/components/PreviewGallery"
 import HowTo from "@/components/HowTo"
 import ResponsiveSpacer from "@/components/ResponsiveSpacer";
 import { useVideo } from "@/context/VideoContext"
-import { callBackendForCourseLinks, callBackendForFlavoredCourseM3u8, callBackendForMp4, callBackendForMp4SequentialBatch, extractCourseNumber } from "@/utils/helpers"
+import { callBackendForCourseLinks, callBackendForFlavoredCourseM3u8, callBackendForMp4SequentialBatch, extractCourseNumber } from "@/utils/helpers"
 import { Snackbar, Alert } from '@mui/material';
 import { callBackendForGenericCourseM3u8 } from "@/utils/helpers"
 import type { MediaGalleryData } from "@/utils/helpers"
@@ -19,11 +19,20 @@ function App() {
     setOpen(false);
   };
 
+  // refs to prevent inf reloads on useEffects
+  const scrapingEffectBlock = useRef(false);
+  const processingEffectBlock = useRef(false);
+  const segsLinksPopulated = useRef(false);
+
+  // state to trigger component reloads
+  const [reloadKey, setReloadKey] = useState(0);
+
   // submitFunction for course number
   const { updateFunction, currCourseNumberLoaded, currCourseNumberString } = useVideo();
   const submitCourseNumber = (inputString: string) => {
     var courseNumberString = extractCourseNumber(inputString)
     if (courseNumberString != null) {
+      setReloadKey(reloadKey + 1)
       updateFunction(courseNumberString);
       updateFunction(true);
       console.log(courseNumberString)
@@ -59,12 +68,9 @@ function App() {
     }
   }, [currCourseNumberLoaded, cookie]);
 
-  const hasRun1 = useRef(false);
-  const hasRun2 = useRef(false);
-  const segsLinksPopulated = useRef(false);
   useEffect(() => {
-    if (!hasRun1.current && typeof videoLinks !== 'string' && videoLinks?.links?.length > 0) {
-      hasRun1.current = true
+    if (!scrapingEffectBlock.current && typeof videoLinks !== 'string' && videoLinks?.links?.length > 0) {
+      scrapingEffectBlock.current = true
       const fetchFlavoredUrls = async () => {
         try {
           const updatedLinks = await Promise.all(
@@ -104,8 +110,8 @@ function App() {
   }, [videoLinks]);
 
   useEffect(() => {
-    if (segsLinksPopulated.current && !hasRun2.current && typeof videoLinks !== 'string' && videoLinks?.links?.length > 0) {
-      hasRun2.current = true
+    if (segsLinksPopulated.current && !processingEffectBlock.current && typeof videoLinks !== 'string' && videoLinks?.links?.length > 0) {
+      processingEffectBlock.current = true
       const fetchMp4Urls = async () => {
         try {
           const updatedVideoLinksMp4 = await callBackendForMp4SequentialBatch(videoLinks.links)
@@ -135,7 +141,7 @@ function App() {
         <InputUrl buttonLabel='Get MP4 Files' inputLabel='Kaltura Request Cookie:' submitInput={submitCookie} />
       )}
       <ResponsiveSpacer smaller='40px' larger='80px' />
-      <PreviewGallery />
+      <PreviewGallery reloadKey={reloadKey} />
       {/* <Box>{m3u8Array}</Box> */}
       <Snackbar
         open={open}

@@ -1,7 +1,10 @@
 import Box from "@mui/material/Box";
 import { useVideo } from "@/context/VideoContext"
 
-export default function PreviewGallery() {
+type PreviewGalleryProps = {
+    reloadKey: Number;
+};
+export default function PreviewGallery({ reloadKey }: PreviewGalleryProps) {
 
     // consts for text input
     const { currCourseNumberLoaded, currCourseNumberString } = useVideo();
@@ -17,6 +20,7 @@ export default function PreviewGallery() {
                     width="100%"
                     height="600"
                     title="Kaltura Channel"
+                    key={reloadKey as React.Key}
                 />
 
             </Box>
