@@ -105,7 +105,11 @@ export const callBackendForGenericCourseM3u8 = async (entryId: string, partnerId
     }
 }
 
-export const callBackendForMp4 = async (segLinks: string[], label: string, entryId: string): Promise<string> => {
+export const callBackendForMp4 = async (
+    segLinks: string[],
+    label: string,
+    entryId: string
+): Promise<string> => {
     try {
         const response = await fetch(buildBaseUrl() + 'segLinksToMp4', {
             method: 'POST',
@@ -113,21 +117,22 @@ export const callBackendForMp4 = async (segLinks: string[], label: string, entry
             body: JSON.stringify({ segLinks, label, entryId })
         });
 
+        const data = await response.json();
         if (!response.ok) {
-            const errorData = await response.json();
             if (response.status === 404) {
-                return errorData as string;
+                return data as string;
             }
-            throw new Error(errorData.message || 'Unexpected error occurred');
+            throw new Error(data.message || 'Unexpected error occurred');
         }
 
-        const blob = await response.blob();
-        const videoUrl = URL.createObjectURL(blob);
+        // Construct real URL to the saved file
+        const videoUrl = buildBaseUrl() + data.url;
         return videoUrl;
     } catch (error) {
         throw error;
     }
 };
+
 
 export const callBackendForMp4SequentialBatch = async (batch: VideoLink[]) => {
     const results: VideoLink[] = [];

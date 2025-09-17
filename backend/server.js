@@ -47,8 +47,8 @@ app.post('/segLinksToMp4', async (req, res) => {
     const tempDir = path.join(__dirname, 'temp' + entryId);
     const outputFile = path.join(tempDir, 'output.mp4');
     const publicDir = path.join(__dirname, 'public');
-    const fileName = labelToFileName(label)
-    const publicFile = path.join(publicDir, `${fileName}_${entryId}.mp4`);
+    const fileName = `${labelToFileName(label)}_${entryId}.mp4`
+    const publicFile = path.join(publicDir, fileName);
 
     try {
         if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
@@ -97,7 +97,7 @@ app.post('/segLinksToMp4', async (req, res) => {
                 try {
                     await waitForFileAccess(outputFile);
                     await fs.promises.copyFile(outputFile, publicFile);
-                    const fileUrl = `/public/${label}${entryId}.mp4`;
+                    const fileUrl = `public/${fileName}`;
                     res.status(200).json({ url: fileUrl });
                 } catch (err) {
                     console.error('Output file not ready:', err);
