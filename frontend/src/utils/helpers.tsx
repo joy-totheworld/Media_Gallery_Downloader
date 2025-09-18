@@ -14,10 +14,12 @@ export interface MediaGalleryData {
 
 export const callBackendForCourseLinks = async (
     courseNumberString: string,
-    cookie: string
+    cookie: string,
+    updateTotal: (newTotal: number) => void
 ): Promise<string | MediaGalleryData> => {
     try {
         const courseNumberLinks = await callBackendForNumCourseLinks(courseNumberString, cookie);
+        updateTotal(Number(courseNumberLinks))
 
         const url = buildBaseUrl() +
             'scrapeLinks?url=https://kaltura.oregonstate.edu/channel/' +
@@ -133,9 +135,9 @@ export const callBackendForMp4 = async (
     }
 };
 
-
-export const callBackendForMp4SequentialBatch = async (batch: VideoLink[]) => {
+export const callBackendForMp4SequentialBatch = async (batch: VideoLink[], updateCounter: (newCount: number) => void) => {
     const results: VideoLink[] = [];
+    var count: number = 0;
 
     for (const currVideoLink of batch) {
         try {
@@ -144,6 +146,8 @@ export const callBackendForMp4SequentialBatch = async (batch: VideoLink[]) => {
                 ...currVideoLink,
                 mp4Url: response
             });
+            count++
+            updateCounter(count)
         } catch (error) {
             console.error('Error fetching:', currVideoLink.label, error);
         }
