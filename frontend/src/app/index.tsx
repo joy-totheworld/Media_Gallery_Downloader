@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { Box, Snackbar, Alert, Backdrop } from '@mui/material';
-// import type { CircularProgressProps } from '@mui/material';
 import InputUrl from "@/components/InputText"
 import PreviewGallery from "@/components/PreviewGallery"
 import HowTo from "@/components/HowTo"
 import CircularProgressWithLabel from "@/components/CircularProgressWithLabel"
 import ResponsiveSpacer from "@/components/ResponsiveSpacer";
+import StyledButton from "@/components/StyledButton";
 import { useVideo } from "@/context/VideoContext"
+import type { VideoLink } from "@/context/VideoContext"
 import { callBackendForCourseLinks, callBackendForFlavoredCourseM3u8, callBackendForMp4SequentialBatch, extractCourseNumber, callBackendForGenericCourseM3u8 } from "@/utils/helpers"
 import type { MediaGalleryData } from "@/utils/helpers"
 
@@ -36,8 +37,9 @@ function App() {
   const scrapingEffectBlock = useRef(false);
   const processingEffectBlock = useRef(false);
   const segsLinksPopulated = useRef(false);
+  const mp4LinksPopulated = useRef(false);
 
-  // submitFunction for course number
+  // submit function for course number
   const { updateFunction, currCourseNumberLoaded, currCourseNumberString } = useVideo();
   const submitCourseNumber = (inputString: string) => {
     var courseNumberString = extractCourseNumber(inputString)
@@ -52,7 +54,7 @@ function App() {
     }
   };
 
-  // submitFunction for cookie
+  // submit function for cookie
   const [cookie, setCookie] = React.useState<string>("");
   const submitCookie = (inputCookie: string) => {
     if (inputCookie != null) {
@@ -63,7 +65,6 @@ function App() {
       setOpenSnackbar(true);
     }
   };
-
 
   // effect to get kaltura html
   const [galleryData, setGalleryData] = useState<string | MediaGalleryData>('');
@@ -133,6 +134,7 @@ function App() {
           });
 
           console.log('Updated links with mp4:', updatedVideoLinksMp4);
+          mp4LinksPopulated.current = true
         } catch (error) {
           console.error('Error updating flavoredUrl:', error);
         }
@@ -143,6 +145,17 @@ function App() {
 
   }, [segsLinksPopulated.current]);
 
+  // on click function to download all mp4 links
+  const downloadMp4 = (videoLinkComplete: VideoLink) => {
+    const anchor = document.createElement('a');
+    anchor.href = videoLinkComplete.mp4Url;
+    anchor.download = `${videoLinkComplete.label}.mp4`; // You can customize filename
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+
+  };
+
   return (
     <Box className="App">
       <HowTo />
@@ -151,9 +164,13 @@ function App() {
       {currCourseNumberLoaded && (
         <InputUrl buttonLabel='Get MP4 Files' inputLabel='Kaltura Request Cookie:' submitInput={submitCookie} />
       )}
+      {(mp4LinksPopulated.current) && (typeof galleryData != "string") && (
+        galleryData.links.map((videoLinkCurr, index) => (
+          <StyledButton key={index} buttonLabel={'Download ' + videoLinkCurr.label} submitFunc={() => downloadMp4(videoLinkCurr)} />
+        ))
+      )}
       <ResponsiveSpacer smaller='40px' larger='80px' />
       <PreviewGallery reloadKey={reloadKey} />
-      {/* <Box>{m3u8Array}</Box> */}
       <Snackbar
         open={openSnackbar}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}

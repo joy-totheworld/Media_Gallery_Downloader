@@ -18,7 +18,7 @@ export default function PreviewGallery({ reloadKey }: PreviewGalleryProps) {
                 <iframe
                     src={"https://kaltura.oregonstate.edu/channel/" + currCourseNumberString}
                     width="100%"
-                    height="600"
+                    height="2000"
                     title="Kaltura Channel"
                     key={reloadKey as React.Key}
                 />
